@@ -35,6 +35,11 @@ if(!require(zoo))
   install.packages(zoo)
   require(zoo)
 }
+if(!require(data.table)) 
+{
+  install.packages(data.table)
+  require(data.table)
+}
 if(!require(DataBaseAlpEnvEURAC))
 {
   if(!require(devtools))
@@ -114,13 +119,71 @@ inputPanel(
 
 ####Which months do have an adequate data quality?
 
-As for statistical downscaling a time series of at least 20 years is necessary the more general question to ask is: For how many years good quality data is available for the specific station? The heatmap below gives an answer for the choosen station (highlighting of rows and colomns as well as zooming is provided).
+As for statistical downscaling a time series of at least 20 years is necessary the more general question to ask is: For how many years good quality data is available for the specific station? The heatmap below gives an answer for the choosen station (highlighting of rows and colomns as well as zooming is provided). Moreover a short summary table is provided for the whole data set.
 
 ```{r, echo=FALSE}
+
+renderDataTable({
+    if (input$variable=="Mean daily air temperature") {var <- "LT_Tmean"} else {var <- "N_1440"}
+    if(input$interpolation=="only raw time series") interpol = F else interpol = T
+    
+  df <- sapply(X = TN_ST_tmean, FUN = function(x, interpol){
+      
+    if (any(dimnames(x)[[2]] == var)) {  
+      
+      if(!interpol) data <- x[,var]
+      if(interpol)
+    {
+      data <- x[,var]
+      LT_Tmean_interpol <- na.spline(object = data,  na.rm = F, maxgap = input$maxgap)
+      data <-  LT_Tmean_interpol
+    }
+    
+
+    data_consY <- aggregate(data, format(time(data), "%Y"), FUN = function(x) {
+      any(!is.na(x))
+    })
+    Nr_consY <- sum(data_consY)
+    Qu_use   <- if(Nr_consY <= 20) FALSE else TRUE
+    
+    consY_start <- as.Date(paste("01-01-", time(data_consY)[which(data_consY)[1]], sep=""), "%d-%m-%Y")
+    consY_end   <- tail(time(data),1)
+    data_consY <- window(x = data, start = consY_start, end = consY_end)
+    NAsInConsY <- sum(is.na(data_consY))
+    NAsInConsYprc <- round(NAsInConsY / length(data_consY) *100, 1)
+    Qu_use_NA <- if (NAsInConsYprc < 10) TRUE else FALSE
+    
+    out_v <- c(Qu_use, Nr_consY, Qu_use_NA, NAsInConsYprc, NAsInConsY)
+    names(out_v) <- c("SufficientObsPeriod","#ConsecutiveYears", "SufficientNAqual", "%NAs4consecutiveYears","#NAs4consecutiveYears")
+    
+    return(out_v)
+    
+  } else {
+    out_v <- rep(NA,5)
+    names(out_v) <- c("SufficientObsPeriod","#ConsecutiveYears", "SufficientNAqual", "%NAs4consecutiveYears","#NAs4consecutiveYears")
+    
+    return(out_v)
+  }
+    
+  }, interpol=interpol)  
+  
+  stations <- dimnames(df)[[2]]
+  df_t <- as.data.frame(t(df))
+  df_t$Station <- stations
+  df_t <- df_t[,c(6,1:5)]
+
+}, options = list(pageLength=5, lengthMenu=c(5, 10, 15, 20, 50, 100)))
+
+```
+
+***
+
+```{r, echo=FALSE}
+
 renderD3heatmap({
   if (input$variable=="Mean daily air temperature") {var <- "LT_Tmean"} else {var <- "N_1440"}
   if(input$interpolation=="only raw time series") data <- TN_ST_tmean[[input$station]][,var]
-  if(input$interpolation=="add interpolated time series") 
+  if(input$interpolation=="add interpolated time series")
   {
     data <- TN_ST_tmean[[input$station]][,var]
     LT_Tmean_interpol <- na.spline(object = data,  na.rm = F, maxgap = input$maxgap)
@@ -136,7 +199,6 @@ data_perc <- matrix(c(coredata(data_perc),rep(NA,6)), ncol=12, byrow = T, dimnam
 d3heatmap(data_perc, scale = "none", colors = "RdYlBu", dendrogram = "none", na.rm = T)
 })
 
-#add 
 ```
 
 ***
