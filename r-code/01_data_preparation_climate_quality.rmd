@@ -1,7 +1,7 @@
 ---
 title: "AirTemperature and Precipitation in SouthTyrol | Data Availability and Quality"
 author: "Johannes Brenner"
-date: "25. Juni 2015"
+date: 'created: 25.06.2015, last modified: `r format(Sys.Date(), format="%d.%m.%Y")`'
 output: html_document
 runtime: shiny
 ---
@@ -22,24 +22,24 @@ This document provides an quality check of the whole data set, containing visual
 ```{r, include=FALSE}
 if(!require(rgdal)) 
 {
-  install.packages(rgdal)
+  install.packages("rgdal")
   require(rgdal)
 }
 if(!require(leaflet)) 
 {
-  install.packages(leaflet)
+  install.packages("leaflet")
   require(leaflet)
 }
 if(!require(zoo)) 
 {
-  install.packages(zoo)
+  install.packages("zoo")
   require(zoo)
 }
 if(!require(DataBaseAlpEnvEURAC))
 {
   if(!require(devtools))
   {
-  install.packages(devtools)
+  install.packages("devtools")
   require(devtools)
   }
   install_github("DataBaseAlpEnvEURAC", "JBrenn")
@@ -47,13 +47,18 @@ if(!require(DataBaseAlpEnvEURAC))
 }
 if(!require(dygraphs))
 {
-  install.packages(dygraphs)
+  install.packages("dygraphs")
   require(dygraphs)
 }
 if(!require(d3heatmap))
 {
-  install.packages(d3heatmap)
+  install.packages("d3heatmap")
   require(d3heatmap)
+}
+if(!require(shiny))
+{
+  install.packages("shiny")
+  require(shiny)
 }
 ```
 
@@ -114,7 +119,7 @@ inputPanel(
 
 ####Which months do have an adequate data quality?
 
-As for statistical downscaling a time series of at least 20 years is necessary the more general question to ask is: For how many years good quality data is available for the specific station? The heatmap below gives an answer for the choosen station (highlighting of rows and colomns as well as zooming is provided).
+As for statistical downscaling a time series of at least 20 years is necessary the more general question to ask is: For how many years good quality data is available for the specific station? The heatmap below gives an answer for the choosen station (highlighting of rows and columns as well as zooming is provided).
 
 ```{r, echo=FALSE}
 renderD3heatmap({
