@@ -14,10 +14,15 @@ This R Markdown document is made interactive using Shiny. To learn more, see [In
 
 ####Data Origin And Pupose Of Use
  
-In South Tyrol a dense network of micro-climate stations is set up since long term. Maintainer of these station in the [Hydrographic Office of the Province Bozen/Bolzano](http://www.provinz.bz.it/wetter/home.asp). Minimum, mean and maximum air temperature and precipitation data has been downloaded on daily basis from their WISKI database. This data is intended to be used for statistical downscaling of regional climate projections, an important step towards realistic forcing for climate impact assessment models.
-This document provides an quality check of the whole data set, containing visualisation of gaps in the time series, a visualisation of the time series itself, a suggestion of an interpolated time series, and calculation of quality indices (not included yet).
+In South Tyrol a dense network of micro-climate stations is set up since long term. Maintainer of these station is the [Hydrographic Office of the Province Bozen/Bolzano](http://www.provinz.bz.it/wetter/home.asp). Minimum, mean and maximum air temperature and precipitation data has been downloaded on daily basis from their WISKI database. This data is intended to be used for statistical downscaling of regional climate projections, an important step towards realistic forcing for climate impact assessment models.
+This document provides
 
-*** 
+* quality check of the whole data set (calculation of quality indices)
+* visualisation of gaps in the time series (monthly basis),
+* visualisation of the time series (daily scale),
+* interpolation of the time series, and calculation of, accordingly, enhanced quality measures.
+
+***
 
 ```{r, include=FALSE}
 
