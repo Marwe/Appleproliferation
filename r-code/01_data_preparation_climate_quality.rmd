@@ -121,7 +121,7 @@ inputPanel(
 
 ```{r, echo=FALSE}
 
-# from DataBseAlpEnv lib
+# from DataBaseAlpEnv lib
 data(T_N_ST)
 T_N_southtyrol <- T_N_southtyrol
 
@@ -156,8 +156,13 @@ renderDataTable({
       LT_Tmean_interpol <- na.spline(object = data,  na.rm = F, maxgap = input$maxgap)
       data <-  LT_Tmean_interpol
     }
-    
 
+    data_consYmon <- aggregate(data, as.yearmon(time(data)), FUN = function(x) {
+      any(!is.na(x))
+    })
+    begin_mon <- time(data_consYmon)[which(data_consYmon)[1]]
+    end_mon   <- time(data_consYmon)[tail(which(data_consYmon),1)] 
+    
     data_consY <- aggregate(data, format(time(data), "%Y"), FUN = function(x) {
       any(!is.na(x))
     })
@@ -171,14 +176,14 @@ renderDataTable({
     NAsInConsYprc <- round(NAsInConsY / length(data_consY) *100, 1)
     Qu_use_NA <- if (NAsInConsYprc < input$NApercent) TRUE else FALSE
     
-    out_v <- c(Qu_use, Nr_consY, Qu_use_NA, NAsInConsYprc, NAsInConsY)
-    names(out_v) <- c("SufficientObsPeriod","#ConsecutiveYears", "SufficientNAqual", "%NAs4consecutiveYears","#NAs4consecutiveYears")
+    out_v <- c(Qu_use, Nr_consY, Qu_use_NA, NAsInConsYprc, NAsInConsY, begin_mon, end_mon)
+    names(out_v) <- c("SufficientObsPeriod","#ConsecutiveYears", "SufficientNAqual", "%NAs4consecutiveYears","#NAs4consecutiveYears","SeriesStart", "SeriesEnd")
     
     return(out_v)
     
   } else {
-    out_v <- rep(NA,5)
-    names(out_v) <- c("SufficientObsPeriod","#ConsecutiveYears", "SufficientNAqual", "%NAs4consecutiveYears","#NAs4consecutiveYears")
+    out_v <- rep(NA,7)
+    names(out_v) <- c("SufficientObsPeriod","#ConsecutiveYears", "SufficientNAqual", "%NAs4consecutiveYears","#NAs4consecutiveYears","SeriesStart", "SeriesEnd")
     
     return(out_v)
   }
@@ -188,7 +193,11 @@ renderDataTable({
   stations <- dimnames(df)[[2]]
   df_t <- as.data.frame(t(df))
   df_t$Station <- stations
-  df_t <- df_t[,c(6,1:5)]
+
+  df_t$SeriesStart <- as.yearmon(df_t$SeriesStart)
+  df_t$SeriesEnd <- as.yearmon(df_t$SeriesEnd)
+  
+  df_t <- df_t[,c(8,1:7)]
 
 }, options = list(pageLength=5, lengthMenu=c(5, 10, 15, 20, 50, 100)))
 ```
@@ -231,8 +240,15 @@ data_perc <- aggregate(x = data, by = as.yearmon(time(data)), FUN = function(x) 
   y <- sum(!is.na(x)) / length(x) *100
   y <- round(y,0)
 })
-data_perc <- matrix(c(coredata(data_perc),rep(NA,6)), ncol=12, byrow = T)
-dimnames(data_perc) <- list((2015-nrow(data_perc)+1):2015,month.abb)
+start_mon <- as.integer(format(time(data)[1],"%m"))
+end_mon   <- as.integer(format(tail(time(data),1),"%m"))
+if (start_mon == 1 & end_mon == 12) data_perc <- matrix(c(coredata(data_perc)), ncol=12, byrow = T)
+if (start_mon != 1 & end_mon == 12) data_perc <- matrix(c(rep(NA,start_mon-1),coredata(data_perc)), ncol=12, byrow = T)
+if (start_mon == 1 & end_mon != 12) data_perc <- matrix(c(coredata(data_perc),rep(NA,12-end_mon)), ncol=12, byrow = T)
+if (start_mon != 1 & end_mon != 12) data_perc <- matrix(c(rep(NA,start_mon-1),coredata(data_perc),rep(NA,12-end_mon)), ncol=12, byrow = T)
+  
+end_year <- as.integer(format(tail(time(data),1),"%Y"))
+dimnames(data_perc) <- list((end_year-nrow(data_perc)+1):end_year,month.abb)
 
 d3heatmap(data_perc, scale = "none", colors = "RdYlBu", dendrogram = "none", na.rm = T)
 })
