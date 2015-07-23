@@ -3,12 +3,12 @@ title: "Data preparation for AP prediction models"
 author: "Bernd Panassiti, Joahnnes Brenner"
 date: 'created: 20.07.2015, last modified: `r format(Sys.Date(), format="%d.%m.%Y")`'
 output:
+  html_document: default
   pdf_document:
     fig_caption: yes
     keep_tex: yes
     toc: yes
     toc_depth: 5
-  html_document: default
   word_document: default
 subtitle: Clustering of monitoring sites
 header-includes: \usepackage{graphicx}
@@ -40,6 +40,30 @@ rm(list=ls(all=TRUE))
 source("r-code/00_settings.r")
 source("r-code/00_helper_functions.r")
 load(file="data/AP_workingdata.Rdata")
+
+
+if(!require(HSAUR)) 
+{
+  install.packages("HSAUR", repos = mir)
+  require(HSAUR)
+}
+if(!require(cluster)) 
+{
+  install.packages("cluster", repos = mir)
+  require(cluster)
+}
+if(!require(ggplot2)) 
+{
+  install.packages("ggplot2", repos = mir)
+  require(ggplot2)
+}
+
+if(!require(dendextend)) 
+{
+  install.packages("dendextend", repos = mir)
+  require(dendextend)
+}
+
 set.seed(2015)
 ```
 
@@ -77,8 +101,6 @@ print(nrClust)
 nrClust=nrClust-1
 }
 
-library(cluster)
-library(HSAUR)
 dissE <- daisy(df) 
 dE2   <- dissE^2
 sk2   <- silhouette(clusterFit$cl, dE2)
@@ -94,7 +116,6 @@ groups <- cutree(fit, k=5) # cut tree into 5 clusters
 # draw dendogram with red borders around the 5 clusters 
 rect.hclust(fit, k=5, border="red")
 
-library(dendextend)
 highlight<-rownames(df)[grepl("st",rownames(df))]
 dend <- as.dendrogram(fit)
 dend2 <- color_labels(dend, labels=highlight,col=2)
