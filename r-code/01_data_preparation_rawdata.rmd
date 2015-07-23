@@ -1,0 +1,178 @@
+---
+title: "Rawdata preparation for AP prediction models"
+author: "Bernd Panassiti"
+date: 'created: 20.07.2015, last modified: `r format(Sys.Date(), format="%d.%m.%Y")`'
+output:
+  pdf_document:
+    fig_caption: yes
+    keep_tex: yes
+    toc: yes
+    toc_depth: 5
+  html_document: default
+  word_document: default
+subtitle: Clustering of monitoring sites
+header-includes: \usepackage{graphicx}
+---
+
+
+## Introduction
+This script prepares the rawdata for AP prediction models. 
+
+
+```{r setup, warning=FALSE, echo=FALSE}
+library(knitr) # for creating html-file
+opts_knit$set(root.dir='../') # definining working directory; or normalizePath('../')
+opts_chunk$set(fig.align='center') # aligns all figures
+opts_chunk$set(echo=FALSE) # suppresses r-code
+opts_chunk$set(message=FALSE) # suppresses library outputs
+opts_chunk$set(warning=FALSE) # suppresses library warnings
+opts_chunk$set(dev='pdf')
+
+```
+
+```{r load}
+rm(list=ls(all=TRUE))
+source("r-code/00_settings.r")
+source("r-code/00_helper_functions.r")
+set.seed(2015)
+```
+
+## Data loading
+
+```{r libraries, include=FALSE}
+
+mir <- "http://cran.us.r-project.org"
+
+
+if(!require(DataBaseAlpEnvEURAC))
+{
+  if(!require(devtools))
+  {
+  install.packages("devtools", repos = mir)
+  require(devtools)
+  }
+  install_github("DataBaseAlpEnvEURAC", "JBrenn")
+  require(DataBaseAlpEnvEURAC)
+}
+
+ if(!require(maptools)) # visualization of geographical data
+  {
+  install.packages("maptools", repos = mir)
+  require(maptools)
+  }
+if(!require(rgdal)) # to open shapefiles
+{
+  install.packages("rgdal", repos = mir)
+  require(rgdal)
+}
+```
+
+
+```{r postgresConnect}
+library(RPostgreSQL)
+
+drv<-dbDriver("PostgreSQL")
+#con<-dbConnect(drv,dbname="cacopsylla",user="pillo",password="...",port=5432)
+con<-dbConnect(drv,dbname="cacopsylla",host="localhost",port=5432)
+#summary(con)
+#dbListTables(con)
+
+#dbDisconnect(con)
+#dbUnloadDriver(drv)
+```
+
+
+
+
+## Response
+
+### AP
+
+```{r}
+responseAP<-dbGetQuery(con,"select site_id, appletree_id,ST_X(the_geom) as lat,ST_Y(the_geom) as long FROM models.apple ORDER BY appletree_id")
+```
+
+
+
+## Environment
+
+### Topographic
+
+```{r topographic}
+demSlopeAspect <- read.delim("~/Projects/Appleproliferation/data/data_preparation/DEM/dem_slope_aspect.csv")
+demAltitude<-dbGetQuery(con,"select site_id, appletree_id,altitude FROM environment.env_altitude ORDER BY site_id")
+```
+
+
+### Climate
+
+#### Climate clustering
+
+```{r}
+# map of South Tyrol
+SouthTyrol <- readShapePoly("/Users/Bernd/Projects/GIS/Italy/administrative/Districts.shp")
+levels(SouthTyrol$name)[1] <- "Ueberetsch-Unterland"
+
+# centroids of apple orchards
+sitesCentroid <- readShapePoints("/Users/Bernd/Projects/Appleproliferation/data/GIS/survey/og_parcel_randomorchard_centroid.shp")
+
+# climate from ZAMG climate prediction map for South Tyrol
+sitesClimate <- readShapePoints("/Users/Bernd/Projects/Appleproliferation/data/GIS/environment/Climate/site_climate.shp") 
+names(sitesClimate)[12] <- "ZAMGclimate"
+
+
+## WEATHER STATIONS
+# weather stations from South Tyrol
+sitesWeatherStations <- readShapePoints("/Users/Bernd/Projects/Appleproliferation/data/GIS/environment/Climate/site_weather_stations.shp") 
+sitesWeatherStations <- sitesWeatherStations[sitesWeatherStations@data$apple==1,]
+
+
+sitesWeatherStationsSlopeAspect <-dbGetQuery(con,"select * FROM environment.site_weather_stations_slope_aspect ORDER BY id")
+
+
+# climate from ZAMG climate prediction map for South Tyrol
+sitesWeatherStationsClimate <- readShapePoints("/Users/Bernd/Projects/Appleproliferation/data/GIS/environment/Climate/site_weather_stations_climate.shp")
+```
+
+
+```{r}
+plot(SouthTyrol)
+#points(apple$lat, apple$long, col='red')
+points(sitesCentroid$coords.x1, sitesCentroid$coords.x2, col='red',pch=20)
+points(sitesWeatherStations$coords.x1,sitesWeatherStations$coords.x2, col='blue',pch=18)
+```
+
+```{r}
+sitesCentroid@data$region <- over(sitesCentroid,SouthTyrol)$name
+sitesWeatherStationsClimate@data$region <- over(sitesWeatherStationsClimate,SouthTyrol)$name
+```
+
+
+
+
+## Save
+```{r save}
+save(
+
+SouthTyrol, # map of South Tyrol 
+
+## data for clustering
+# data for  apple orchards
+sitesClimate, # climate from ZAMG climate prediction map for South Tyrol
+sitesCentroid,
+
+
+# data for weather stations
+sitesWeatherStations,  # weather stations meta data from South Tyrol obtained from EURAC
+sitesWeatherStationsClimate,
+sitesWeatherStationsSlopeAspect,
+
+# data for modelling
+responseAP,
+demSlopeAspect,
+demAltitude,
+
+file="data/AP_rawdata.Rdata"
+)
+```
+
