@@ -77,8 +77,6 @@ stationsClusterRegion <- stationsCluster[stationsCluster$region %in% sitesCluste
 
 
 
-The number of clusters is defined by the number of weather stations, meaning we can rely on k-mean clustering method.
-
 ```{r scale}
 df <- rbind(sitesCluster,stationsClusterRegion)
 df[,3:6] <- scale(df[,3:6])
@@ -86,10 +84,15 @@ df <- na.omit(df)
 df$region <- as.numeric(df$region)
 rownames(df) <- df[,1]
 df <- df[,-1]
+dfClusterRaw <- df # backup
 ```
 
+### K-means clustering
+
+The number of clusters is defined by the number of weather stations.
 
 ```{r clust_kmeans}
+df <- dfClusterRaw
 nrClust <- nrow(stationsClusterRegion)
 END=FALSE
 while(END==FALSE){
@@ -97,7 +100,7 @@ clusterFit <- kmeans(df,nrClust) # nrClust = number of weather stations
 dfCluster  <- data.frame(df,clusterFit$cluster)
 rowsWeatherStations <- which(grepl("st",rownames(dfCluster)))
 if(all(seq(1:nrClust) %in% dfCluster[rowsWeatherStations,"clusterFit.cluster"])==TRUE){END=TRUE}
-print(nrClust)
+#print(nrClust)
 nrClust=nrClust-1
 }
 
@@ -108,13 +111,18 @@ plot(sk2)
 ```
 
 
+### Hierarchical clustering
+
+#### Clustering including the region criteria
+
 ```{r}
+df <- dfClusterRaw
 d <- dist(df, method = "euclidean") # distance matrix
 fit <- hclust(d, method="ward") 
-plot(fit) # display dendogram
-groups <- cutree(fit, k=5) # cut tree into 5 clusters
+#plot(fit) # display dendogram
+#groups <- cutree(fit, k=5) # cut tree into 5 clusters
 # draw dendogram with red borders around the 5 clusters 
-rect.hclust(fit, k=5, border="red")
+#rect.hclust(fit, k=5, border="red")
 
 highlight<-rownames(df)[grepl("st",rownames(df))]
 dend <- as.dendrogram(fit)
@@ -125,7 +133,7 @@ groups <- cutree(fit, k=4) # cut tree into 5 clusters
 rect.hclust(fit, k=4, border="red")
 ```
 
-```{r}
+```{r ,results='hide'}
 clustResult <- data.frame(na.omit(rbind(sitesCluster,stationsClusterRegion))[,1:2],groups)
 clustResult[order(clustResult$region),]
 ```
@@ -144,10 +152,71 @@ dfStations$type <- "station"
 dfSitesStations <- data.frame(rbind(dfSites,dfStations))
 
 tmp <- SouthTyrol[SouthTyrol@data$name %in% c("Burggrafenamt","Vinschgau"),]
-df <- fortify(tmp,region="name")
-ggplot(df, aes(long,lat,group=id)) + geom_polygon(fill="white",color="black")+coord_equal() +
+dfggplot <- fortify(tmp,region="name")
+ggplot(dfggplot, aes(long,lat,group=id)) + geom_polygon(fill="white",color="black")+coord_equal() +
   geom_point(data=dfSitesStations,aes(x=coords.x1,y=coords.x2,shape=as.factor(groups),color=type,size=6))
-
-
 ```
 
+
+Problem: Sites from Vinschgau maybe better assigned to weather stations from Burggrafenamt.
+
+
+
+#### Clustering without the region criteria and excluding weather stations from Vinschgau.
+
+```{r}
+# without 
+df <- dfClusterRaw # backup clustering data.frame
+rowSt <- which(grepl("st",rownames(df)) & df[,1]==5)
+df <- df[- rowSt,-1]
+
+d <- dist(df, method = "euclidean") # distance matrix
+fit <- hclust(d, method="ward") 
+```
+
+```{r}
+#plot(fit) # display dendogram
+#groups <- cutree(fit, k=5) # cut tree into 5 clusters
+# draw dendogram with red borders around the 5 clusters 
+#rect.hclust(fit, k=5, border="red")
+
+highlight<-rownames(df)[grepl("st",rownames(df))]
+dend <- as.dendrogram(fit)
+dend2 <- color_labels(dend, labels=highlight,col=2)
+plot(dend2)
+
+# draw dendogram with red borders around the 5 clusters 
+rect.hclust(fit, k=4, border="red")
+```
+
+
+```{r ,results='hide'}
+stationsClusterRegionBackup <- stationsClusterRegion
+stationsClusterRegion <- stationsClusterRegion[stationsClusterRegion$region=="Burggrafenamt",]
+
+groups <- cutree(fit, k=4) # cut tree into 5 clusters
+clustResult <- data.frame(na.omit(rbind(sitesCluster,stationsClusterRegion))[,1:2],groups)
+clustResult[order(clustResult$region),]
+stationsClusterRegion <- stationsClusterRegionBackup
+```
+
+```{r}
+df1 <- clustResult
+df2 <- data.frame(sitesCentroid)[c("id","coords.x1","coords.x2")]
+df3 <- data.frame(sitesWeatherStations)[,c("NUMMER","coords.x1","coords.x2")]
+colnames(df3)[1] <- "id"
+
+dfSites <- merge(df1,df2,by=c("id","id"))
+dfSites <- dfSites[order(as.numeric(dfSites[,1])),]
+dfSites$type <- "site"
+dfStations <- merge(df1,df3,by=c("id","id"))
+dfStations$type <- "station"
+dfSitesStations <- data.frame(rbind(dfSites,dfStations))
+
+tmp <- SouthTyrol[SouthTyrol@data$name %in% c("Burggrafenamt","Vinschgau"),]
+dfggplot <- fortify(tmp,region="name")
+ggplot(dfggplot, aes(long,lat,group=id)) + geom_polygon(fill="white",color="black")+coord_equal() +
+  geom_point(data=dfSitesStations,aes(x=coords.x1,y=coords.x2,shape=as.factor(groups),color=type,size=6))
+```
+
+Problem: Some orchards from Burggrafenamt will not be assigned a weather station when choosing 3 or 4 clusters.  
