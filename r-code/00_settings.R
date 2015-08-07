@@ -1,7 +1,7 @@
-library(RPostgreSQL)
+#library(RPostgreSQL)
 
-drv<-dbDriver("PostgreSQL")
-con<-dbConnect(drv,dbname="cacopsylla",host="localhost",port=5432,user="pillo",password="oenothera")
+#drv<-dbDriver("PostgreSQL")
+#con<-dbConnect(drv,dbname="cacopsylla",host="localhost",port=5432,user="pillo",password="")
 #summary(con)
 #dbListTables(con)
 
