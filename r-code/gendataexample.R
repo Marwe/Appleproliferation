@@ -1,0 +1,2 @@
+runifdat<-runif(10)
+
